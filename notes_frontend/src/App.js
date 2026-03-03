@@ -1,47 +1,95 @@
-import React, { useState, useEffect } from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { useMemo } from "react";
+import "./App.css";
+import { TopNav } from "./components/TopNav";
+import { NotesSidebar } from "./components/NotesSidebar";
+import { NoteEditor } from "./components/NoteEditor";
+import { useNotes } from "./hooks/useNotes";
 
 // PUBLIC_INTERFACE
 function App() {
-  const [theme, setTheme] = useState('light');
+  const {
+    filteredNotes,
+    selectedId,
+    selectedNote,
 
-  // Effect to apply theme to document element
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
+    allTags,
+    activeTag,
+    setActiveTag,
 
-  // PUBLIC_INTERFACE
-  const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+    search,
+    setSearch,
+
+    loading,
+    saving,
+    error,
+    setError,
+
+    setSelectedId,
+    createNote,
+    saveNote,
+    deleteNote,
+  } = useNotes();
+
+  const safeDelete = async (id) => {
+    const ok = window.confirm("Delete this note permanently?");
+    if (!ok) return;
+    await deleteNote(id);
   };
 
+  const subtitle = useMemo(() => {
+    if (activeTag) return `Filtered by #${activeTag}`;
+    if (search.trim()) return `Searching “${search.trim()}”`;
+    return "All notes";
+  }, [activeTag, search]);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <button 
-          className="theme-toggle" 
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-        </button>
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <p>
-          Current theme: <strong>{theme}</strong>
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="AppShell">
+      <TopNav
+        search={search}
+        onSearchChange={(v) => setSearch(v)}
+        onCreateNote={() => createNote()}
+        saving={saving}
+      />
+
+      <main className="Main">
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <NotesSidebar
+            tags={allTags}
+            activeTag={activeTag}
+            onSelectTag={(t) => setActiveTag(t)}
+            notes={filteredNotes}
+            selectedId={selectedId}
+            onSelectNote={(id) => setSelectedId(id)}
+            loading={loading}
+          />
+
+          <div className="Panel" aria-label="Status">
+            <div className="PanelHeader">
+              <div className="PanelTitle">
+                <span>///</span> Status
+              </div>
+              <button className="Btn BtnSm BtnGhost" type="button" onClick={() => setError("")}>
+                Clear
+              </button>
+            </div>
+            <div className="PanelBody">
+              <div className="MutedText">{subtitle}</div>
+              {loading ? <div className="Loading" style={{ marginTop: 8 }}>loading…</div> : null}
+              {error ? (
+                <div className="Alert" style={{ marginTop: 10 }}>
+                  {error}
+                </div>
+              ) : (
+                <div className="MutedText" style={{ marginTop: 10 }}>
+                  Backend: {process.env.REACT_APP_API_BASE || "(not set)"}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <NoteEditor note={selectedNote} saving={saving} onSave={saveNote} onDelete={safeDelete} />
+      </main>
     </div>
   );
 }
