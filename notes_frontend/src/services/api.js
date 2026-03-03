@@ -53,34 +53,54 @@ export const api = {
   health: async () => request("/"),
 
   /**
-   * List notes. (Backend may implement query params; we keep this flexible)
-   * @param {{ q?: string, tag?: string }} params
+   * List/search notes.
+   * Backend supports:
+   * - query: searches title/content
+   * - tags: repeated query param (AND semantics)
+   *
+   * @param {{ query?: string, tags?: string[], archived?: boolean, limit?: number, offset?: number, sort?: string }} params
    */
   // PUBLIC_INTERFACE
   listNotes: async (params = {}) => {
     const qs = new URLSearchParams();
-    if (params.q) qs.set("q", params.q);
-    if (params.tag) qs.set("tag", params.tag);
+
+    if (params.query) qs.set("query", params.query);
+
+    if (Array.isArray(params.tags)) {
+      params.tags
+        .map((t) => String(t).trim())
+        .filter(Boolean)
+        .forEach((t) => qs.append("tags", t));
+    }
+
+    if (typeof params.archived === "boolean") qs.set("archived", String(params.archived));
+    if (typeof params.limit === "number") qs.set("limit", String(params.limit));
+    if (typeof params.offset === "number") qs.set("offset", String(params.offset));
+    if (params.sort) qs.set("sort", params.sort);
+
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
     return request(`/notes${suffix}`, { method: "GET" });
   },
 
   /**
    * Create a note.
-   * @param {{ title: string, content: string, tags: string[] }} payload
+   * @param {{ title: string, content?: string, is_archived?: boolean, tags?: string[] }} payload
    */
   // PUBLIC_INTERFACE
   createNote: async (payload) =>
     request(`/notes`, { method: "POST", body: JSON.stringify(payload) }),
 
   /**
-   * Update a note.
+   * Update a note (backend uses PATCH).
    * @param {string|number} id
-   * @param {{ title: string, content: string, tags: string[] }} payload
+   * @param {{ title?: string, content?: string, is_archived?: boolean, tags?: string[] }} payload
    */
   // PUBLIC_INTERFACE
   updateNote: async (id, payload) =>
-    request(`/notes/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) }),
+    request(`/notes/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
 
   /**
    * Delete a note.

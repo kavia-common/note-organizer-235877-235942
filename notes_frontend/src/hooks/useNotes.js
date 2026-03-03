@@ -58,8 +58,11 @@ export function useNotes() {
     setLoading(true);
     setError("");
     try {
-      // Try query-based listing; if backend doesn't support, backend should still return all notes.
-      const data = await api.listNotes({ q: search.trim() || undefined, tag: activeTag || undefined });
+      // Server-side search/filter (also used to keep total accurate); backend supports `query` + repeated `tags`.
+      const data = await api.listNotes({
+        query: search.trim() || undefined,
+        tags: activeTag ? [activeTag] : undefined,
+      });
       const list = Array.isArray(data) ? data : data?.items || [];
       setNotes(list);
 
